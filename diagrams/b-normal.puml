@@ -1,0 +1,34 @@
+@startuml
+hide footbox
+skinparam dpi 175
+skinparam defaultFontName Arial
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam sequence {
+  ArrowColor #276A79
+  LifeLineBorderColor #78929B
+  ParticipantBackgroundColor #E8F2F3
+  ParticipantBorderColor #276A79
+  ParticipantFontColor #153B48
+  GroupBorderColor #8FAAB0
+}
+autonumber
+participant "Сервис банка" as S
+participant "API / реестр\nи стартер" as A
+participant "Workflow\nTemporal" as W
+participant "Activity\nканала" as C
+participant "Push /\nприложение" as P
+S -> A: Событие списания
+A -> A: Commit ID + outbox
+A --> S: Принято, ID
+A -> W: Start по ID
+W -> C: Проверить профиль, создать попытку
+C -> P: Push с ID
+C --> W: Запрос принят
+W -> W: Ждать Signal или таймер
+P -> A: Квитанция устройства
+A -> A: Commit inbox
+A -> W: Signal(ACK, ID)
+W -> C: Зафиксировать DELIVERED
+C --> W: Записано; завершить workflow
+@enduml

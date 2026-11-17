@@ -1,0 +1,31 @@
+@startuml
+!pragma layout smetana
+!include <C4/C4_Container>
+skinparam defaultFontName Arial
+skinparam dpi 150
+skinparam shadowing false
+skinparam wrapWidth 140
+skinparam nodesep 20
+skinparam ranksep 30
+UpdateElementStyle("container", $bgColor="#155568", $borderColor="#155568", $fontColor="white")
+UpdateElementStyle("external_system", $bgColor="#515F70", $borderColor="#515F70")
+System_Ext(bank, "Сервисы банка", "Фиксируют события операций")
+System_Boundary(platform, "Платформа уведомлений · вариант B") {
+  Container(api, "Приём и квитанции", "HTTP API", "Регистрирует события и ACK")
+  ContainerDb(db, "Прикладной реестр", "PostgreSQL + реплика", "Ключи, профиль, inbox/outbox, аудит")
+  Container(start, "Стартер и сигналы", "Сервис", "Запускает workflow и пересылает ACK")
+  Container(temporal, "Движок процессов", "Temporal Server", "Устойчивые таймеры и Task Queue")
+  ContainerDb(hist, "История процессов", "PostgreSQL + реплика", "Состояние и история Temporal")
+  Container(worker, "Исполнители", "Temporal SDK", "Workflow и Activity каналов")
+}
+System_Ext(channel, "Каналы доставки", "Push / SMS / email; квитанции")
+Rel_D(bank, api, "Событие", "HTTPS")
+Rel_D(api, db, "Сохраняет", "SQL")
+Rel_D(start, db, "Читает задания", "SQL")
+Rel_R(start, temporal, "Start / Signal", "gRPC")
+Rel_D(temporal, hist, "Фиксирует историю", "SQL")
+Rel_D(worker, temporal, "Берёт задачи", "gRPC")
+Rel_D(worker, db, "Проверяет и пишет попытки", "SQL")
+Rel_D(worker, channel, "Отправляет", "HTTPS")
+Rel_L(channel, api, "Результат / ACK клиента", "HTTPS")
+@enduml

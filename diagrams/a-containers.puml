@@ -1,0 +1,32 @@
+@startuml
+!pragma layout smetana
+!include <C4/C4_Container>
+skinparam defaultFontName Arial
+skinparam dpi 150
+skinparam shadowing false
+skinparam wrapWidth 140
+skinparam nodesep 20
+skinparam ranksep 30
+UpdateElementStyle("container", $bgColor="#155568", $borderColor="#155568", $fontColor="white")
+UpdateElementStyle("external_system", $bgColor="#515F70", $borderColor="#515F70")
+System_Ext(bank, "Сервисы банка", "Публикуют операции из своего outbox")
+System_Boundary(platform, "Платформа уведомлений · вариант A") {
+  Container(api, "Приём и квитанции", "HTTP API", "Валидирует событие или подписанный ACK")
+  ContainerDb(db, "Реестр", "PostgreSQL + реплика", "Попытки, профили, сроки, inbox/outbox")
+  Container(relay, "Ретранслятор", "Сервис", "Переносит записи outbox в брокер")
+  ContainerQueue(bus, "Шина событий", "Apache Kafka", "Раздельные потоки по срочности")
+  Container(dispatch, "Диспетчер", "Сервис", "Выбирает маршрут, проверяет таймеры")
+  Container(adapter, "Адаптеры каналов", "Worker-пулы", "Проверяют попытку и отправляют")
+}
+System_Ext(channel, "Каналы доставки", "Push / SMS / email; квитанции")
+Rel_D(bank, api, "Событие", "HTTPS")
+Rel_D(api, db, "Пишет событие / ACK", "SQL")
+Rel_D(relay, db, "Читает outbox", "SQL")
+Rel_R(relay, bus, "Публикует", "Kafka")
+Rel_D(bus, dispatch, "Событие / ACK", "Kafka")
+Rel_D(dispatch, db, "Меняет версию и сроки", "SQL")
+Rel_D(bus, adapter, "Команда на отправку", "Kafka")
+Rel_R(adapter, db, "Проверяет попытку", "SQL")
+Rel_D(adapter, channel, "Отправляет", "HTTPS")
+Rel_L(channel, api, "Результат / ACK клиента", "HTTPS")
+@enduml
